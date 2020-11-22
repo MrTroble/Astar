@@ -3,12 +3,16 @@
 #include "tgengine/TGEngine/public/io/Resource.hpp"
 #include "tgengine/TGEngine/public/gamecontent/Actor.hpp"
 #include "tgengine/TGEngine/public/pipeline/buffer/UniformBuffer.hpp"
+#include <array>
 
 using namespace std;
 using namespace tge::tex;
 using namespace tge::io;
 using namespace tge::gmc;
 using namespace tge::buf;
+
+TextureInputInfo texture;
+bool textureChanged = false;
 
 int main()
 {
@@ -25,12 +29,18 @@ int main()
 	createdMaterials = new Material[255];
 	createdMaterials[0] = { { 1, 1, 1, 1}, 0};
 
-	TextureInputInfo texture;
-	texture.comp = 4;
-	texture.x = texture.y = 1;
-	texture.data = new uint8_t[4]{ 0xFF, 0x00, 0x00, 0xFF};
+	texture.data = stbi_load("canvas.png", &texture.x, &texture.y, &texture.comp, 0);
+
 	currentMap.textures.resize(1);
 	createTextures(&texture, 1, currentMap.textures.data());
+
+	playercontroller = [](Input input) {
+		if (!textureChanged)
+			return;
+		destroyTexture(currentMap.textures.data(), 1);
+
+		createTextures(&texture, 1, currentMap.textures.data());
+	};
 
 	actorDescriptor.push_back({ 6, 0, 0, UINT32_MAX });
 	actorProperties.push_back({ { glm::fmat4(1), 0, 0 }, 0, 0});

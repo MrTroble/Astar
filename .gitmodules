@@ -1,0 +1,3 @@
+[submodule "Astar/tgengine"]
+	path = Astar/tgengine
+	url = https://github.com/Troblecodings/TGEngine

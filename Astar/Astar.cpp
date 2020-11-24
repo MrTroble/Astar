@@ -3,7 +3,9 @@
 #include "tgengine/TGEngine/public/io/Resource.hpp"
 #include "tgengine/TGEngine/public/gamecontent/Actor.hpp"
 #include "tgengine/TGEngine/public/pipeline/buffer/UniformBuffer.hpp"
+#include "tgengine/TGEngine/public/pipeline/CommandBuffer.hpp"
 #include <array>
+#include <thread>
 
 using namespace std;
 using namespace tge::tex;
@@ -13,6 +15,39 @@ using namespace tge::buf;
 
 TextureInputInfo texture;
 bool textureChanged = false;
+bool wait = true;
+bool lock = false;
+
+#define WAIT() wait = false; while(!wait) continue
+
+static void runAstar() {
+	WAIT();
+
+    constexpr uint8_t white[] = { 0xFF, 0xFF, 0xFF, 0xFF };
+	constexpr uint8_t green[] = { 0, 0xFF, 0, 0xFF };
+	constexpr uint8_t hg[] = { 0, 0xF0, 0, 0xFF };
+
+	for (size_t i = 0; i < texture.x; i++) {
+		if (memcmp(texture.data + i * 4, white, 4) == 0) {
+			memcpy(texture.data + i * 4, green, 4);
+			break;
+		}
+	}
+
+	textureChanged = true;
+	WAIT();
+
+	for (size_t i = 0; i < texture.x; i++) {
+		uint8_t* ptr = texture.data + i * 4 + (texture.x * (texture.y - 1) * 4);
+		if (memcmp(ptr, white, 4) == 0) {
+			memcpy(ptr, hg, 4);
+			break;
+		}
+	}
+
+	textureChanged = true;
+	WAIT();
+}
 
 int main()
 {
@@ -34,12 +69,27 @@ int main()
 	currentMap.textures.resize(1);
 	createTextures(&texture, 1, currentMap.textures.data());
 
+	std::thread thread(runAstar);
+	thread.detach();
+
 	playercontroller = [](Input input) {
+		if(input.inputX == 0) lock = false;
+		if (lock == true)
+			return;
+		if (input.inputX > 0 && wait != true) {
+			lock = true;
+			wait = true;
+		}
+
 		if (!textureChanged)
 			return;
+
+		textureChanged = false;
 		destroyTexture(currentMap.textures.data(), 1);
 
 		createTextures(&texture, 1, currentMap.textures.data());
+
+		fillCommandBuffer();
 	};
 
 	actorDescriptor.push_back({ 6, 0, 0, UINT32_MAX });

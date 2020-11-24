@@ -69,10 +69,15 @@ struct NavData {
 
 inline void getColorFromHeuristics(const NavData& data, uint8_t* colorout) {
 	uint32_t color = 0;
-	for (uint32_t i = 0; i < sizeof(data.possiblePaths) / sizeof(NavPath); i++)
-		color += data.possiblePaths[i].heuristic;
-	color = std::pow(color, 7);
-	memcpy(colorout, &color, 3);
+	for (uint32_t i = 0; i < sizeof(data.possiblePaths) / sizeof(NavPath); i++) {
+		const uint32_t heur = data.possiblePaths[i].heuristic;
+		if (heur == -1) continue;
+		color += heur;
+	}
+	float delta = color / (float)texture.x * 2.0f;
+	colorout[0] = 0xFF ;
+	colorout[1] = 0xFF * delta;
+	colorout[2] = 0xFF * (1 - delta);
 	colorout[3] = 0xFF;
 }
 
